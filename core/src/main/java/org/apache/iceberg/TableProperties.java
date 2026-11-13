@@ -121,6 +121,9 @@ public class TableProperties {
   public static final String MANIFEST_MERGE_ENABLED = "commit.manifest-merge.enabled";
   public static final boolean MANIFEST_MERGE_ENABLED_DEFAULT = true;
 
+  public static final String COMMIT_CONFLICT_MERGE_ENABLED = "commit.conflict-merge.enabled";
+  public static final boolean COMMIT_CONFLICT_MERGE_ENABLED_DEFAULT = false;
+
   public static final String DEFAULT_FILE_FORMAT = "write.format.default";
   public static final String DELETE_DEFAULT_FILE_FORMAT = "write.delete.format.default";
   public static final String DEFAULT_FILE_FORMAT_DEFAULT = "parquet";

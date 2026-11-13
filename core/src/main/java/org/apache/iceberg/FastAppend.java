@@ -100,6 +100,37 @@ class FastAppend extends SnapshotProducer<AppendFiles> implements AppendFiles {
   }
 
   @Override
+  protected void validate(TableMetadata base, Snapshot parent) {
+    if (!base.propertyAsBoolean(
+        TableProperties.COMMIT_CONFLICT_MERGE_ENABLED,
+        TableProperties.COMMIT_CONFLICT_MERGE_ENABLED_DEFAULT)) {
+      return;
+    }
+
+    if (newDataFilesBySpec.isEmpty()) {
+      return;
+    }
+
+    Map<Integer, DataFileSet> mergedBySpec =
+        AppendConflictResolver.mergeCommittedFiles(ops().io(), base, parent, newDataFilesBySpec);
+    if (mergedBySpec != null) {
+      newDataFilesBySpec.clear();
+      newDataFilesBySpec.putAll(mergedBySpec);
+      hasNewFiles = true;
+      rebuildSummary();
+    }
+  }
+
+  private void rebuildSummary() {
+    summaryBuilder.clear();
+    newDataFilesBySpec.forEach(
+        (specId, dataFiles) -> {
+          PartitionSpec spec = spec(specId);
+          dataFiles.forEach(file -> summaryBuilder.addedFile(spec, file));
+        });
+  }
+
+  @Override
   public FastAppend toBranch(String branch) {
     targetBranch(branch);
     return this;

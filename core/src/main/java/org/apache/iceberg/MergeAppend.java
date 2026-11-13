@@ -37,6 +37,15 @@ class MergeAppend extends MergingSnapshotProducer<AppendFiles> implements Append
   }
 
   @Override
+  protected void validate(TableMetadata base, Snapshot parent) {
+    if (base.propertyAsBoolean(
+        TableProperties.COMMIT_CONFLICT_MERGE_ENABLED,
+        TableProperties.COMMIT_CONFLICT_MERGE_ENABLED_DEFAULT)) {
+      mergeCommittedDataFiles(base, parent);
+    }
+  }
+
+  @Override
   public MergeAppend appendFile(DataFile file) {
     add(file);
     return this;

@@ -171,6 +171,42 @@ abstract class MergingSnapshotProducer<ThisT> extends SnapshotProducer<ThisT> {
         .collect(ImmutableList.toImmutableList());
   }
 
+  /**
+   * Drops pending data files that are already present in the given snapshot so that retrying an
+   * append after a concurrent commit does not add the same files twice.
+   *
+   * <p>Files are matched by path within the partition spec they were written with, so appends that
+   * use older partition specs are handled correctly while the table spec evolves.
+   *
+   * @param base table metadata to validate against
+   * @param parent current head snapshot of the target branch
+   */
+  protected void mergeCommittedDataFiles(TableMetadata base, Snapshot parent) {
+    if (newDataFilesBySpec.isEmpty()) {
+      return;
+    }
+
+    Map<Integer, DataFileSet> mergedBySpec =
+        AppendConflictResolver.mergeCommittedFiles(ops().io(), base, parent, newDataFilesBySpec);
+    if (mergedBySpec != null) {
+      newDataFilesBySpec.clear();
+      newDataFilesBySpec.putAll(mergedBySpec);
+      hasNewDataFiles = true;
+      cachedNewDataManifests.forEach(file -> deleteFile(file.path()));
+      cachedNewDataManifests.clear();
+      rebuildAddedDataFilesSummary();
+    }
+  }
+
+  private void rebuildAddedDataFilesSummary() {
+    addedDataFilesSummary.clear();
+    newDataFilesBySpec.forEach(
+        (specId, dataFiles) -> {
+          PartitionSpec spec = spec(specId);
+          dataFiles.forEach(file -> addedDataFilesSummary.addedFile(spec, file));
+        });
+  }
+
   protected void failAnyDelete() {
     filterManager.failAnyDelete();
     deleteFilterManager.failAnyDelete();
